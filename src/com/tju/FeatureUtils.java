@@ -1,91 +1,95 @@
 package com.tju;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class Features {
+public class FeatureUtils {
 
-	public static List<WeiboItem> itemList=new ArrayList<WeiboItem>();
-	public static Map<String,List<WeiboItem>> dataMap=new HashMap<String,List<WeiboItem>>();
-	public static Map<String,List<WeiboItem>> dataMap_C=new HashMap<String,List<WeiboItem>>();
 	
-	private static Integer getFile(String filename){
-		File file=new File(filename);
-		BufferedReader br=null;
-		try {
-			br=new  BufferedReader(new FileReader(file));
-			String line="";
-			while((line=br.readLine())!=null)
-			{
-				WeiboItem record=new WeiboItem(line);
-				itemList.add(record);
+	/**
+	 * 求出每个用户每个需要预测值得期望和标准差
+	 * @return  map  key为uid    value为double数组  double[0，1，2]为
+	 * 转发、评论、赞的均值，double[3，4，5]为对应的标准差
+	 */
+	public static Map<String,Double[]> byMeanDevit(){
+		Map<String,Double[]> map=new HashMap<String,Double[]>();
+		for(String key : Features.dataMap.keySet()){
+			List<WeiboItem> list=Features.dataMap.get(key);
+			Double p[]=new Double[6];
+			for(int i=0;i<6;i++)
+				p[i]=0.0;
+			Double sum1=0.0;  //forward
+			Double sum2=0.0;  //review
+			Double sum3=0.0;  //nice
+			Integer counts=0;
+			for(WeiboItem item : list){
+				sum1+=item.getForwardTimes();
+				sum2+=item.getReviewTimes();
+				sum3+=item.getNiceTimes();
+				counts+=1;
 			}
-		} catch (IOException e) {
+			p[0]=sum1/counts;
+			p[1]=sum2/counts;
+			p[2]=sum3/counts;
+			Double sum4=0.0;
+			sum1=0.0;  //forward
+			sum2=0.0;  //review
+			sum3=0.0;  //nice
+			for(WeiboItem item : list){
+				sum1+=Math.pow((item.getForwardTimes()-p[0]),2);
+				sum2+=Math.pow((item.getReviewTimes()-p[1]),2);
+				sum3+=Math.pow((item.getNiceTimes()-p[2]),2);
+			}
+			p[3]=Math.sqrt(sum1/counts);
+			p[4]=Math.sqrt(sum2/counts);
+			p[5]=Math.sqrt(sum3/counts);
+			map.put(key, p);
 			
-			e.printStackTrace();
 		}
-		finally{
-			try {
-				br.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-		
-		return 1;
+		return map;
 	}
 	
-	public static void main(String[] args) {
-		String name="E:\\LZ\\weibo_train_data\\weibo_train_data.txt";
-		getFile(name);
-		getMap();
-		getMap_C();
-		Map<String,Double[]> featureMap=FeatureUtils.byMeanDevit();
-		Map<String,Double[]> featureMap_C=FeatureUtils.byMeanDevit_C();
-		Prediction pre=new Prediction();
-		itemList.clear();dataMap.clear();dataMap_C.clear();
-		String preInName="E:\\LZ\\weibo_predict_data\\weibo_predict_data.txt";
-		String preOutName="E:\\LZ\\weibo_result_data.txt";
-		pre.predictByMeanDevit(preInName, preOutName, featureMap);
-		pre.predictByMeanDevit_C(preInName, preOutName, featureMap,featureMap_C);
-	}
-
-	private static void getMap() {
-		for(WeiboItem item : itemList){
-			if(dataMap.containsKey(item.getUid())){
-				List<WeiboItem> tempList=dataMap.get(item.getUid());
-				tempList.add(item);
-				dataMap.put(item.getUid(), tempList);
+	/**
+	 * 求出每个用户每个类别每个需要预测值得期望和标准差
+	 * @return  map  key为uid+cid    value为double数组  double[0，1，2]为
+	 * 转发、评论、赞的均值，double[3，4，5]为对应的标准差
+	 */
+	public static Map<String,Double[]> byMeanDevit_C(){
+		Map<String,Double[]> map=new HashMap<String,Double[]>();
+		for(String key : Features.dataMap_C.keySet()){
+			List<WeiboItem> list=Features.dataMap_C.get(key);
+			Double p[]=new Double[6];
+			for(int i=0;i<6;i++)
+				p[i]=0.0;
+			Double sum1=0.0;  //forward
+			Double sum2=0.0;  //review
+			Double sum3=0.0;  //nice
+			Integer counts=0;
+			for(WeiboItem item : list){
+				sum1+=item.getForwardTimes();
+				sum2+=item.getReviewTimes();
+				sum3+=item.getNiceTimes();
+				counts+=1;
 			}
-			else{
-				List<WeiboItem> tempList=new ArrayList<WeiboItem>();
-				tempList.add(item);
-				dataMap.put(item.getUid(), tempList);
+			p[0]=sum1/counts;
+			p[1]=sum2/counts;
+			p[2]=sum3/counts;
+			Double sum4=0.0;
+			sum1=0.0;  //forward
+			sum2=0.0;  //review
+			sum3=0.0;  //nice
+			for(WeiboItem item : list){
+				sum1+=Math.pow((item.getForwardTimes()-p[0]),2);
+				sum2+=Math.pow((item.getReviewTimes()-p[1]),2);
+				sum3+=Math.pow((item.getNiceTimes()-p[2]),2);
 			}
+			p[3]=Math.sqrt(sum1/counts);
+			p[4]=Math.sqrt(sum2/counts);
+			p[5]=Math.sqrt(sum3/counts);
+			map.put(key, p);
+			
 		}
+		return map;
 	}
-	private static void getMap_C() {
-		for(WeiboItem item : itemList){
-			if(dataMap_C.containsKey(item.getUid()+item.getCid())){
-				List<WeiboItem> tempList=dataMap_C.get(item.getUid()+item.getCid());
-				tempList.add(item);
-				dataMap_C.put(item.getUid()+item.getCid(), tempList);
-			}
-			else{
-				List<WeiboItem> tempList=new ArrayList<WeiboItem>();
-				tempList.add(item);
-				dataMap_C.put(item.getUid()+item.getCid(), tempList);
-			}
-		}
-	}
-	
-
 }
